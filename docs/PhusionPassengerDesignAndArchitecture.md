@@ -29,11 +29,11 @@ Here are some common models that are in use:
 
 Typical examples of such a model:
 
-  * A J2EE application, contained in the Tomcat application server, reverse proxied behind the Apache web server. Tomcat can contain multiple web applications in a single Tomcat instance.
-  * Most Ruby application servers besides _Phusion Passenger_ - _Thin_, _Unicorn_, _Goliath_, etc. These application servers can only contain a single Ruby web application per instance. They load the web application into their own process and are put behind a web server (_Apache_, _Nginx_) in a reverse proxy setup.
-  * _Green Unicorn_, the Python WSGI application server, behind a reverse proxy setup.
-  * PHP web application spawned by the FastCGI Process Manager, behind Nginx reverse proxy setup.
+  *) A J2EE application, contained in the Tomcat application server, reverse proxied behind the Apache web server. Tomcat can contain multiple web applications in a single Tomcat instance.
+  *) Most Ruby application servers besides _Phusion Passenger_ - _Thin_, _Unicorn_, _Goliath_, etc. These application servers can only contain a single Ruby web application per instance. They load the web application into their own process and are put behind a web server (_Apache_, _Nginx_) in a reverse proxy setup.
+  *) _Green Unicorn_, the Python WSGI application server, behind a reverse proxy setup.
+  *) PHP web application spawned by the FastCGI Process Manager, behind Nginx reverse proxy setup.
 
 2. The web app is contained directly in a **web server**. In this case, the web server acts like an **application server**. Typical examples include:
-  * PHP web apps running on Apache through _mod_php_. 
+  *) PHP web apps running on Apache through _mod_php_. 
 
