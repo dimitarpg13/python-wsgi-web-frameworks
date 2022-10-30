@@ -33,9 +33,11 @@ Typical examples of such a model:
 
     - _Green Unicorn_, the Python WSGI application server, behind a reverse proxy setup.
 
-    - PHP web application spawned by the FastCGI Process Manager, behind Nginx reverse proxy setup.
+    - _PHP_ web application spawned by the _FastCGI Process Manager_, behind _Nginx_ reverse proxy setup.
 
 2. The web app is contained directly in a **web server**. In this case, the web server acts like an **application server**. Typical examples include:
 
-    - PHP web apps running on Apache through _mod_php_. 
+    - _PHP_ web apps running on Apache through _mod_php_. 
+    - Python WSGI web applications running on Apache through _mod_uwsgi_ or _mod_python_.
+    Note that this does not necessarily mean that the web application is run inside the same process as the web server: it just means that the web server manages applications. 
 
