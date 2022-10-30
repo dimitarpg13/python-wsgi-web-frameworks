@@ -39,5 +39,6 @@ Typical examples of such a model:
 
     - _PHP_ web apps running on Apache through _mod_php_. 
     - Python WSGI web applications running on Apache through _mod_uwsgi_ or _mod_python_.
+
     Note that this does not necessarily mean that the web application is run inside the same process as the web server: it just means that the web server manages applications. 
 
