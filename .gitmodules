@@ -1,3 +1,6 @@
 [submodule "passenger"]
 	path = passenger
 	url = https://github.com/phusion/passenger.git
+[submodule "passenger-python-flask-demo"]
+	path = passenger-python-flask-demo
+	url = https://github.com/dimitarpg13/passenger-python-flask-demo.git
