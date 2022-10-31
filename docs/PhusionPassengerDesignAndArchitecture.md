@@ -40,5 +40,28 @@ Typical examples of such a model:
     - _PHP_ web apps running on Apache through _mod_php_. 
     - Python WSGI web applications running on Apache through _mod_uwsgi_ or _mod_python_.
 
-    Note that this does not necessarily mean that the web application is run inside the same process as the web server: it just means that the web server manages applications. 
+    Note that this does not necessarily mean that the web application is run inside the same process as the web server: it just means that the web server manages applications. In case of _mod_php_, PHP runs directly inside the Apache worker processes, but in case of _mod_uwsgi_ the Python processes can be configurred to run out-of-process.
+
+    _Phusion Passenger for Apache_ and _Phusion Passenger for Nginx_ implement this model, and run applications outside the web server process. 
+
+3. The web application *is* a web server, and can accept HTTP requests directly. Examples of this model:
+
+    - Almost all _Node.js_ and _Meteor JS_ web applications.
+    - The _Trac_ bug tracking software, running in its standalone server.
+
+    In most setups, the admin puts those in a reverse proxy configuration, behind a real web server such as _Apache_ or _Nginx_, instead of letting hem acept HTTP requests directly. 
+
+    _Phusion Passenger Sandalone_ implements this model. However, you can expose _Phusion Passenger Standalone_ directly to the Internet because it uses _Nginx_ internally.
+
+4. The web application does not speak HTTP directly, but it is connected directly to the web server through some communication adapter. _CGI_, _FastCGI_ and _SCGI_ are good examples of this.
+
+
+The above models cover how nearly all web apps work, whether they are based on _PHP_, _Django_, _J2EE_, _ASP.NET_, _Ruby on Rails_, etc. Note that all of these models provide the same functionality i.e. no model can do something that a different model can't_ and _SCGI_ are good examples of this.
+
+
+The above models cover how nearly all web apps work, whether they are based on _PHP_, _Django_, _J2EE_, _ASP.NET_, _Ruby on Rails_, etc. Note that all of these models provide the same functionality i.e. no model can do something that a different model can't. All of those models are identical to the one described in the first diagram, if the combination of web servers, app serves, web applications are considered to be a single entity - a black box.
+
+It should also be noted that these models do not enforce any particular I/O processing implementation. The web servers, app serves, web apps could process IO serially (i.e. one request at a time), could multiplex IO with a single thread (using `select(2)` or `poll(2)`) 
+
+
 
