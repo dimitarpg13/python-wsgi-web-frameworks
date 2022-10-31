@@ -95,3 +95,51 @@ void clr_fl(int fd, int flags) {
   }
 }
 ```
+
+In this example the program issues more than 9,000 `write` calls, even though only 500 are needed to output the data. The rest just return an error. This type of loop, called _polling_, is a waste of CPU time on a multiuser system. We will see that IO multiplexing with nonblocking descriptor is a more efficient way to do this.
+
+Sometimes, we can avoid using nonblocking IO by designing our apps to use multiple threads. We can allow individual threads to block in IO calls if we can continue to make progress in other threads. This can sometimes  simplify the design; at other times, however, the overhead of synchronization can add more complexity than is saved from using threads.
+
+## Record Locking
+
+What happens when two people edit the same  file at the same time? In most UNIX systems, the final state of the file corresponds to the last process that wrote the file. In some applications, however, such a database system, a process needs to be certain that it alone is writing to a file. To provide this capability for processes that need it, Unix provides record locking.
+
+_Record locking_ is the term normally used to describe the ability to a process to prevent other processes from modifying a region of a file while the first process is reading or modifying that portion of the file. "Record" really means byte range as the unix kernel does not have the notion of records in a file. Hence a better term would be _byte-range locking_, given that it is a range of a file (possibly entire file) that is locked. 
+
+### `fcntl` Record Locking
+
+Let us start with providing the `fnctl` declaration:
+
+```cpp
+#include <fcntl.h>
+
+int fcntl(int fd, int cmd, ... /* struct flock *flockptr */ );
+```
+Return: depends on _cmd_ if OK, -1 on error
+
+For record locking, _cmd_ is `F_GETLK`, `F_SETLK`, or `F_SETLKW`. The third argument _flockptr_ is a pointer to an `flock` structure:
+
+```cpp
+struct flock {
+  short l_type;   /* F_RDLCK, F_WRLCK, or F_UNLCK */
+  short l_whence; /* SEEK_SET, SEEK_CUR, or SEEK_END */
+  off_t l_start;  /* offset in bytes, relative to l_whence */
+  off_t l_len;    /* length, in bytes; 0 means lock to EOF */
+  pid_t l_pid;    /* returned with F_GETLK */
+}
+```
+
+This structure describes 
+
+* the type of lock desired: `F_RDLCK` (a shared read lock), `F_WRLCK` (an exclusive write lock), or `F_UNLCK` (unlocking a region)
+* the starting byte offset of the region being locked or unlocked (`l_start` and `l_whence`)
+* the size of the region in nytes (`l_len`)
+* the ID (`l_pid`) of the process holding the lock that can block the current process (returned by `F_GETLK` only)
+
+Numerous rules apply to the specification of the region to be locked or unlocked.
+
+* The two elements that specify the starting offset of the region are similar to the last two arguments of the `lseek` function. Indeed the `l_whence` member is specified as `SEEK_SET`, `SEEK_CUR`, or `SEEK_END`. 
+* Locks can start and extend beyond the current end of file, but cannot start or extend before the beginning of the file.
+* If `l_len` is 0, it means that the lock extends to the largest possible offset of the file. This allows us to lock a region starting anywhere in the file, up through and including any data that is appended to the file. (We do not have to try to guess how many bytes might be appended to the file)
+* To lock the entire file, we set `l_start` and `l_whence` to point to the 
+
