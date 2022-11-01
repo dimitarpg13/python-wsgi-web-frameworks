@@ -141,5 +141,18 @@ Numerous rules apply to the specification of the region to be locked or unlocked
 * The two elements that specify the starting offset of the region are similar to the last two arguments of the `lseek` function. Indeed the `l_whence` member is specified as `SEEK_SET`, `SEEK_CUR`, or `SEEK_END`. 
 * Locks can start and extend beyond the current end of file, but cannot start or extend before the beginning of the file.
 * If `l_len` is 0, it means that the lock extends to the largest possible offset of the file. This allows us to lock a region starting anywhere in the file, up through and including any data that is appended to the file. (We do not have to try to guess how many bytes might be appended to the file)
-* To lock the entire file, we set `l_start` and `l_whence` to point to the 
+* To lock the entire file, we set `l_start` and `l_whence` to point to the beginning of the file and specify a length (`l_len`) of 0. (There are several ways to specify the beginning of the file, but most applications specify `l_start` as 0 and `l_whence` as `SEEK_SET`).
+
+We previously mentioned two types of locks: a shared read lock (`l_type` of `F_RDLCK`) and exclusive write lock (`F_WRLCK`). The basic rule is that any number of processes can have a shared read lock on a given byte, but only one process can have an exclusive write lock on a given byte, but only one process can have an exclusive write lock on a given byte. Furthermore, if there are one or more read locks on a byte, there can't be any write locks on that byte; if there is an exclusive write lock on a byte, there can't be any read locks on that byte. This formulation will be denoted as _compatibility rule_ for different lock types. 
+
+The compatibility rule applies to lock requests made from different processes, not to multiple lock requests made by a single process. If a process has an existing lock on a range of a file, a subsequent attempt to place a lock on the same range by the same process will replace the existing lock with a new one. Thus, if a process has a write lock on bytes 16-32 of a file and then tries to place a read lock on bytes 16-32, the request will succeed, and the write lock will be replaced by a read lock.
+To obtain a read lock, the descriptor must be open for reading; to obtain a write lock, the descriptor must be open for writing.
+
+Details on the commands for the `fcntl` function:
+
+`F_GETLK`  Determine whether the lock described by _flockptr_ is blocked by some other lock. If a lock exists that would prevent ours from being created, the information on that existing lock overwrites the information pointed to by _flockptr_. If no lock exists that would prevent ours from being created, the structure pointed to by _flockptr_ is left unchanged except for the `l_type` member, which is set to `F_UNLCK`.
+
+`F_SETLK`  Set the lock described by _flockptr_. If we are trying to obtain a read lock (`l_type` of `F_RDLCK`) or a write lock (`l_type` of `F_WRLCK`) and the compatibility rule prevents the system from giving us the lock , `fcntl` returns immediately with `errno` set to either `EACCES` or `EAGAIN`. This command is also used to clear the lock described by _flockptr_ (`l_type` of `F_UNLCK`).
+
+`F_SETLKW` This command is a blocking version of `F_SETLK`. (The `W` in the command name mean _wait_). If the requested read lock or write lock cannot be granted because another process currently has some part of the requested region locked, the calling process is put to sleep. 
 
