@@ -180,4 +180,101 @@ File after locking bytes 100 through 199
 ```
 File after unlocking byte 150
 
+If we were to lock byte 150, the system would coalesce the adjacent locked regions into a single region from byte 100 through 199. The resulting picture would be the first diagram above, the same as we started.
 
+#### Example - Requesting and Releasing a Lock
+
+To save ourselves from having to allocate an `flock` structure and fill in all the elements each time, the function `lock_reg` shown below handles all these details:
+
+```cpp
+#include <fcntl.h>
+
+int lock_reg(int fd, int cmd, int type, off_t offset, int whence, off_t len)
+{
+   struct flock  lock;
+
+   lock.l_type = type;      /* F_RDLCK, F_WRLCK, F_UNLCK */
+   lock.l_start = offset;   /* byte offset, relative to l_whence */
+   lock.l_whence = whence;  /* SEEK_SET, SEEK_CUR, SEEK_END */
+   lock.l_len = len;        /* #bytes (0 means to EOF) */
+
+   return (fcntl(fd, cmd, &lock));
+}
+```
+
+Since most locking calls are to lock or unlock a region (the command `F_GETLK` is rarely used), we normally use one of the following five macros:
+
+```cpp
+#define read_lock(fd, offset, whence, len) \
+     lock_reg((fd), F_SETLK, F_RDLK, (offset), (whence), (len))
+#define readw_lock(fd, offset, whence, len) \
+     lock_reg((fd), F_SETLKW, F_RDLCK, (offset), (whence), (len))
+#define write_lock(fd, offset, whence, len) \
+     lock_reg((fd), F_SETLK, F_WRLCK, (offset), (whence), (len))
+#define writew_lock(fd, offset, whence, len) \
+     lock_reg((fd), F_SETLKW, F_WRLCK, (offset), (whence), (len))
+#define un_lock(fd, offset, whence, len) \
+     lock_reg((fd), F_SETLK, F_UNLCK, (offset), (whence), (len))
+```
+
+#### Example - Testing for a Lock
+
+The code excerpt below defines a function `lock_test` that we'll use to test for a lock.
+
+```cpp
+#include <sys/types.h>
+#include <fcntl.h>
+#include <stdio.h>
+
+pid_t lock_test(int fd, int type, off_t offset, int whence, off_t len)
+{
+   struct flock lock;
+
+   lock.l_type = type;     /* F_RDLCK or F_WRLCK */
+   lock.l_start = offset;  /* byte offset, relative to l_whence */
+   lock.l_whence = whence; /* SEEK_SET, SEEK_CUR, SEEK_END */
+   lock.l_len = len;       /* #bytes (0 means to EOF) */
+
+   if (fcntl(fd, F_GETLK, &lock) < 0)
+   {
+       
+   }
+
+}
+```
+
+# Appendix: useful functions
+
+```cpp
+#include <errno.h>
+#include <stdarg.h>
+/*
+ * Print a message and return to caller.
+ * Caller specifies "errnoflag".
+ */
+static void
+err_doit(int errnoflag, int error, const char *fmt, va_list ap)
+{
+  char buf[MAXLINE];
+  vsnprintf(buf, MAXLINE, fmt, ap);
+  if (errnoflag)
+     snprintf(buf+strlen(buf), MAXLINE-strlen(buf), ": %s", strerror(error));
+  strcat(buf, "\n");
+  fflush(stdout);  /* in case stdout and strerr are the same */
+  fputs(buf, stderr);
+  fflush(NULL);    /* flushes all stdio output streams */
+}
+
+/*
+ * Fatal error related to a system call.
+ * Print a message and terminate.
+ */
+void err_sys(const char *fmt, ...)
+{
+   va_list ap;
+   va_start(ap, fmt);
+   err_doi(1, errno, fmt, ap);
+   va_end(ap);
+   exit(1);
+}
+```
