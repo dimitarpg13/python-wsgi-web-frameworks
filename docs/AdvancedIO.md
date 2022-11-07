@@ -154,5 +154,30 @@ Details on the commands for the `fcntl` function:
 
 `F_SETLK`  Set the lock described by _flockptr_. If we are trying to obtain a read lock (`l_type` of `F_RDLCK`) or a write lock (`l_type` of `F_WRLCK`) and the compatibility rule prevents the system from giving us the lock , `fcntl` returns immediately with `errno` set to either `EACCES` or `EAGAIN`. This command is also used to clear the lock described by _flockptr_ (`l_type` of `F_UNLCK`).
 
-`F_SETLKW` This command is a blocking version of `F_SETLK`. (The `W` in the command name mean _wait_). If the requested read lock or write lock cannot be granted because another process currently has some part of the requested region locked, the calling process is put to sleep. 
+`F_SETLKW` This command is a blocking version of `F_SETLK`. (The `W` in the command name mean _wait_). If the requested read lock or write lock cannot be granted because another process currently has some part of the requested region locked, the calling process is put to sleep. The process wakes up either when the lock becomes available or when interrupted by a signal.
+
+Be aware that testing for a lock with `F_GETLK` and then trying to obtain that lock with `F_SETLK` or `F_SETLKW` is not an atomic operation. We have no guarantee that, between the two `fcntl` calls, some other process won't come in and obtain the same lock. If we do not want to block while waiting for a lock to become  available to us, we must handle the possible error returns from `F_SETLK`. 
+
+Note that POSIX.1 does not specify what happens when one process read locks a range of a file, a second process blocks while trying to get a write lock on the same range, and a third process then attempts to get another read lock on the range. If the third process is allowed to place a read lock on the range just because the range is already locked, then the implementation might starve processes with pending write locks. Thus, as additional requests to read lock the same range arrive, the time that the process with the pending write-lock has to wait is extended. If the read-lock requests arrive quickly enough without a lull in the arrival rate, then the writer could wait for a long time.
+
+When setting or releasing a lock on a file , the system combines or splits adjacent areas as required. For example, if we lock bytes 100 through 199 and then unlock byte 150, the kernel still maintains the locks on bytes 100 through 149 and bytes 151 through 199. The schematic below illustrates the byte-range locks in this situation:
+
+```
+ ----------- ---------------------------------------------------------------- ------------
+|           |                         locked range                           |            |
+ ----------- ---------------------------------------------------------------- ------------
+           |                                                                 |
+          100                                                               199
+```
+File after locking bytes 100 through 199
+
+```
+ ---------- ------------------------- ---   --- ------------------------- --- ------------
+|          |   first locked range    |   | |   |   second locked range   |   |            |
+ ---------- ------------------------- ---   --- ------------------------- --- ------------
+           |                         |         |                             |
+          100                       149       151                           199
+```
+File after unlocking byte 150
+
 

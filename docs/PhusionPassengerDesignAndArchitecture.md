@@ -61,7 +61,24 @@ The above models cover how nearly all web apps work, whether they are based on _
 
 The above models cover how nearly all web apps work, whether they are based on _PHP_, _Django_, _J2EE_, _ASP.NET_, _Ruby on Rails_, etc. Note that all of these models provide the same functionality i.e. no model can do something that a different model can't. All of those models are identical to the one described in the first diagram, if the combination of web servers, app serves, web applications are considered to be a single entity - a black box.
 
-It should also be noted that these models do not enforce any particular I/O processing implementation. The web servers, app serves, web apps could process IO serially (i.e. one request at a time), could multiplex IO with a single thread (using `select(2)` or `poll(2)`) 
+It should also be noted that these models do not enforce any particular I/O processing implementation. The web servers, app serves, web apps could process IO serially (i.e. one request at a time), could multiplex IO with a single thread (using `select(2)` or `poll(2)`) or it could process IO with multiple threads and/or multiple processes. It depends on the implementation.
 
+Of course, there are many variations possible. For example, load balancers could be used.
+
+
+#### The rationale behind reverse proxying
+
+Administrators often put the web application or its application werver behnind a real web server in a reverse proxy setup, even when the web app/app server already speaks HTTP. This is because implementing HTTP in a proper, secure way involves more than just speaking the protocol. The public Internet is a hostile environment where clients can send any arbitrary data and can exhibit any arbitrary IO patterns. If you don't properly implement IO handling, then you could open
+yourself either to parser vulnerabilities or DoS attacks.
+
+Web servers like Apache and Nginx have already implemented world-class IO and connection handling code and it would be waste not to use it. In the end, putting the application in a reverse proxying setup often makes the whole system more robust and more secure. This is the reason why it is considered a good practice.
+
+A typical problem involves dealing with **slow clients**. These clients may send HTTP requests slowly and read HTTP responses slowly, perhaps taking many seconds to complete their work. A naive single-threaded HTTP server implementation that reads an HTTP requests, processes and sends the HTTP response in a loop may end up spending so much time waiting for IO that spends very little time doing actual work. Worse: suppose that the client is malicious, just leaves the socket open and never
+reads the HTTP response, then the server will spend forever waiting for the client, not being able to handle any more requests.
+
+##### An example of naive HTTP server implementation
+```
+
+```
 
 
