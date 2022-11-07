@@ -221,6 +221,7 @@ Since most locking calls are to lock or unlock a region (the command `F_GETLK` i
 
 The code excerpt below defines a function `lock_test` that we'll use to test for a lock.
 
+Function to test for locking condition
 ```cpp
 #include <sys/types.h>
 #include <fcntl.h>
@@ -236,12 +237,33 @@ pid_t lock_test(int fd, int type, off_t offset, int whence, off_t len)
    lock.l_len = len;       /* #bytes (0 means to EOF) */
 
    if (fcntl(fd, F_GETLK, &lock) < 0)
-   {
-       
-   }
+      err_sys("fcntl error");
+
+   if (lock.l_type == F_UNLCK)
+      return(0);        /* false, region isn't locked by another proc */
+   return(lock.l_pid);  /* true, return pid of lock owner */
 
 }
 ```
+
+If a lock exists that would block the request specified by the arguments, this function returns the process ID of the process holding the lock. Otherwise, the function returns 0 (false). We define two helper macros invoking this function:
+
+```cpp
+#define is_read_lockable(fd, offset, whence, len) \
+    (lock_test((fd), F_RDLCK, (offset), (whence), (len)) == 0)
+#define is_write_lockable(fd, offset, whence, len) \
+    (lock_test((fd), F_WRLCK, (offset), (whence), (len)) == 0)
+```
+
+Note that the `lock_test` function can't be used by a process to see whether it is currently holding a portion of a file locked. The defintion of the `F_GETLK` command states that the information returned applies to an existing lock that would prevent us from creating our own lock. Since the `F_SETLK` and `F_SETLKW` commands always replace a process's existing lock if it exists, we can never block on our own lock; thus, the `F_GETLK` command will never report our own lock.
+
+
+#### Example - Deadlock
+
+Deadlock occurs when two processes are each waiting for a resource that the other has locked. The potential for deadlock exists if a process that controls a locked region is put to sleep when it tries to lock another region that is controlled by a different process. 
+The code below shows an example of deadlock. The child locks byte 0 and the parent locks byte 1. Each then tries to lock the other's already locked byte. We use parent-child synchronization routines (`TELL_xxx` and `WAIT_xxx`) so that each process can wait for the other to obtain its lock.
+
+
 
 # Appendix: useful functions
 
@@ -278,3 +300,7 @@ void err_sys(const char *fmt, ...)
    exit(1);
 }
 ```
+
+# Useful links
+
+https://notes.shichao.io/apue/ch8/
