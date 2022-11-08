@@ -73,12 +73,21 @@ yourself either to parser vulnerabilities or DoS attacks.
 
 Web servers like Apache and Nginx have already implemented world-class IO and connection handling code and it would be waste not to use it. In the end, putting the application in a reverse proxying setup often makes the whole system more robust and more secure. This is the reason why it is considered a good practice.
 
-A typical problem involves dealing with **slow clients**. These clients may send HTTP requests slowly and read HTTP responses slowly, perhaps taking many seconds to complete their work. A naive single-threaded HTTP server implementation that reads an HTTP requests, processes and sends the HTTP response in a loop may end up spending so much time waiting for IO that spends very little time doing actual work. Worse: suppose that the client is malicious, just leaves the socket open and never
-reads the HTTP response, then the server will spend forever waiting for the client, not being able to handle any more requests.
+A typical problem involves dealing with **slow clients**. These clients may send HTTP requests slowly and read HTTP responses slowly, perhaps taking many seconds to complete their work. A naive single-threaded HTTP server implementation that reads an HTTP requests, processes and sends the HTTP response in a loop may end up spending so much time waiting for IO that spends very little time doing actual work. Worse: suppose that the client is malicious, just leaves the socket open and never reads the HTTP response, then the server will spend forever waiting for the client, not being able to handle any more requests.
 
 ##### An example of naive HTTP server implementation
 ```
-
+while true
+   client = accept_next_client()
+   request = read_http_request(client)
+   response = process_request(request)
+   send_http_response(client, response)
+end
 ```
+There are many ways to solve this problem. One could use one thread per client, one could implement IO timeouts, one could use an evented IO architecture, one could have a dedicated IO thread or process buffer requests and responses. The point is that implementing all this properly is non-trivial. Instead of reimplementing these over and over in each application server, it's better to let a real web server deal with all the details and let the application server and the web application do what they're best at: their own core business logic.
 
 
+## Phusion Passenger architecture overview
+
+
+![passenger architecture diagram](images/passenger_architecture1.png)
