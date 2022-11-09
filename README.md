@@ -1,2 +1,2 @@
 # python-wsgi-web-frameworks
-study of wsgi and python based web frameworks
+This repo is a work in progress and it is a an ongoing study of Phusion Passenger application server as well as wsgi based web frameworks. This repo also will provide in debt introduction to the Phusion Passenger architecture with code insights delving into the individual Passenger modules. Additionally we will venture into popular wsgi frameworks such as Flask and will look in its source code and implementation details.

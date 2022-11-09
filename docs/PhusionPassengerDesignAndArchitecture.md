@@ -91,3 +91,5 @@ There are many ways to solve this problem. One could use one thread per client, 
 
 
 ![passenger architecture diagram](images/passenger_architecture1.png)
+
+Phusion Passenger is not a single, monolithic entity. Instead, it consists of multiple components and processes that work together. Part of the reason why Phusion Passenger is split like this, is because it's technically necessary (no other way to implement it). But another part of the reason is stability and robustness. Individual components can crash and can be restarted independently from each other. 
