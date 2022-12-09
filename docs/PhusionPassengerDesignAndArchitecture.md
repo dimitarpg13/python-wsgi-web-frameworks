@@ -92,4 +92,62 @@ There are many ways to solve this problem. One could use one thread per client, 
 
 ![passenger architecture diagram](images/passenger_architecture1.png)
 
-Phusion Passenger is not a single, monolithic entity. Instead, it consists of multiple components and processes that work together. Part of the reason why Phusion Passenger is split like this, is because it's technically necessary (no other way to implement it). But another part of the reason is stability and robustness. Individual components can crash and can be restarted independently from each other. 
+Phusion Passenger is not a single, monolithic entity. Instead, it consists of multiple components and processes that work together. Part of the reason why Phusion Passenger is split like this, is because it's technically necessary (no other way to implement it). But another part of the reason is stability and robustness. Individual components can crash and can be restarted independently from each other. If we were to put everything inside a single process, hen a crash will take down all
+of Phusion Passenger.
+
+Thus, if the Passenger core crashes, or if an application process crashes, they can both be restarted without affecting he web server's stability.
+
+### Web server module
+
+When an HTTP client sends a request, it is receieved by the web server (Nginx or Apache). Both Apache and Nginx can be extended with **modules**. Phusion Passenger provides such a module. The module is loaded into Nginx/Apache. It checks whether the request should be handled by a Phusion Passenger-served web application, and if so, forwards the request to the Passenger core. The internal wire protocol used during this forwarding is a modified version of SCGI.
+
+![Passenger architecture](images/passenger_architecture1.png)
+
+
+# Appendix: Simple Common Gateway Interface
+
+The **Simple Common Gateway Interface (SCGI)** is a protocol for applications to interface with HTTP servers, as an alternative to the CGI protocol. It is similar to FastCGI but it is designed to be easier to parse. Unlike CGI, it permits a long-running service process to continue serving requests, thus avoiding delays in the responding to requests due to setup overhead (such as connecting to a database).
+
+SCGI is a _protocol_ which defines _communication_ between a web server and an application server. This is in contrast to CGI, which is an earlier application (gateway) interface designed to let the application programmer avoid the complexity of sockets and long running service processes when poor scalability and high overhead are acceptable.
+
+The SCGI protocol leverages the fact that the web server has already parsed and validated the HTTP request, and canonically communicates the request to the SCGI server while letting the application programmer avoid parsing ambiguities and protocol edge cases. This avoids the complicated header parsing and header combinging rules from RFC 2616 saving significant complexity in the SCGI server process. 
+
+## Specification
+
+The client connects to a SCGI server over a reliable stream protocol allowing transmission of 8 bit bytes. The client begins by sending a request. When the SCGI server sees the end of the request it sends back a response and closes the connection. The format of the response is not specifically specified by this protocol, although CGI-equivalent HTTP responses are generally used.
+
+### Request format
+
+A SCGI request is the concatenation of netstring-encoded headers and a body. A SCGI response is a normal HTTP response.
+Each header consists of a name-value pair, where botht he name and the value are null-terminated strings (C strings). The value can be an empty string, in which case the terminating null still remains. Neither name nor value can contain any embedded null bytes. These considerations are standard for C strings, but are often confusing for programmers used to other standards for string-handling.
+
+All provided headers are concatenated to form a single byte sequence, then netstring-encoded. The raw body, if any, is then appended.
+
+Duplicate names are not allowed in the request headers; RFC 2616 compliant header combining must already have taken place. The first request header must have the name "CONTENT_LENGTH" and a value that is the length of the body in decimal. The "CONTENT_LENGTH" request header must always be present, even if its value is "0". There must also always be a request header with the name "SCGI" and a value of "1". Standard CGI environment variables should be provided in SCGI headers for compatibility when converting older CGI programs to SCGI. The body (if any) provided in the request follows the headers; its length is specified by the "CONTENT_LENGTH" request header.
+
+While the SCGI protocol insulates the service programmer from some HTTP considerations, various details such as interpreting the octets of the message body as per the Transfer-Encoding header, the CONTENT_LENGTH being the number of octets after the body has been encoded for transmission still require knowledge of the HTTP protocol specification.
+
+### Example
+
+The web server (a SCGI client) opens a connection and sends the concatenation of the following strings to the service process (a SCGI server):
+
+```
+"70:"
+    "CONTENT_LENGTH" <00> "27" <00>
+    "SCGI" <00> "1" <00>
+    "REQUEST_METHOD" <00> "POST" <00>
+    "REQUEST_URI" <00> "/deepthought" <00>
+","
+"What is the answer to life?"
+```
+
+The SCGI server sends the following response back to the web server
+
+```
+"Status: 200 OK" <0d 0a>
+"Content-Type: text/plain" <0d 0a>
+"" <0d 0a>
+"42"
+```
+
+The SCGI server closes the connection.
