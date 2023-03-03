@@ -101,8 +101,13 @@ Thus, if the Passenger core crashes, or if an application process crashes, they 
 
 When an HTTP client sends a request, it is receieved by the web server (Nginx or Apache). Both Apache and Nginx can be extended with **modules**. Phusion Passenger provides such a module. The module is loaded into Nginx/Apache. It checks whether the request should be handled by a Phusion Passenger-served web application, and if so, forwards the request to the Passenger core. The internal wire protocol used during this forwarding is a modified version of SCGI.
 
-![Passenger architecture](images/passenger_architecture1.png)
+The NGINX module and the Apache module have an entirely different code base. Their code bases are in `ext/nginx` and `ext/apache2`, respectively. Both modules are relatively small because they outsource most of the logic to passenger core and because they utilize common library (`ext/common`). This design allows to support both Nginx and Apache without having to write the same things twice.
 
+### Passenger core
+
+The **Passenger core** is where the most of the processing is done. The core keeps track of which application processes currently exist, and using load balancing rules, determines which process a request should be forwarded to. The core also takes care of **application spawning**: if it determines that having more application processes is necessary or beneficial, then it will make that happen. Process spawning is subject to user-configured limits: the core will never spawn more processes than a user-configured maximum.
+
+The core also has monitoring and statistics gathering capabilities
 
 # Appendix: Simple Common Gateway Interface
 
@@ -115,6 +120,7 @@ The SCGI protocol leverages the fact that the web server has already parsed and 
 ## Specification
 
 The client connects to a SCGI server over a reliable stream protocol allowing transmission of 8 bit bytes. The client begins by sending a request. When the SCGI server sees the end of the request it sends back a response and closes the connection. The format of the response is not specifically specified by this protocol, although CGI-equivalent HTTP responses are generally used.
+
 
 ### Request format
 
